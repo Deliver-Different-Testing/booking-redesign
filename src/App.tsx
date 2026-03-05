@@ -125,7 +125,7 @@ export default function App() {
   const [pickupServicesOpen, setPickupServicesOpen] = useState(false)
   const [deliveryServicesOpen, setDeliveryServicesOpen] = useState(false)
   const [searchType, setSearchType] = useState<'google' | 'addressbook'>('google')
-  const [reviewed, setReviewed] = useState(true)
+  const [_reviewed, _setReviewed] = useState(true) // eslint-disable-line @typescript-eslint/no-unused-vars
   const [packageType, setPackageType] = useState<'standard' | 'custom'>('standard')
   const [refA, setRefA] = useState('')
   const [refB, setRefB] = useState('')
