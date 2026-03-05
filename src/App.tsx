@@ -290,10 +290,10 @@ export default function App() {
         <button style={{ background: 'var(--brand-cyan)', color: '#fff', border: 'none', borderRadius: 8, padding: '0 16px', height: 34, fontWeight: 700, cursor: 'pointer' }}>+ Add</button>
       </div>
 
-      <div style={s.page}>
-        {/* Row 1: Pickup + Delivery */}
-        <div style={s.grid}>
-          <div style={s.card}>
+      <div className="booking-page">
+        <div className="booking-grid">
+          {/* ─── PICKUP CARD ─── */}
+          <div className="pickup-card" style={s.card}>
             <div style={s.cardHeader}>
               <span style={{ fontWeight: 700, fontSize: 14 }}>From: Test Company Ltd</span>
               <span style={{ cursor: 'pointer', color: 'var(--text-muted)' }}>🗑</span>
@@ -353,7 +353,8 @@ export default function App() {
             </div>
           </div>
 
-          <div style={s.card}>
+          {/* ─── DELIVERY CARD ─── */}
+          <div className="delivery-card" style={s.card}>
             <div style={s.cardHeader}>
               <span style={{ fontWeight: 700, fontSize: 14 }}>To:</span>
               <span style={{ cursor: 'pointer', color: 'var(--text-muted)' }}>⇄</span>
@@ -419,15 +420,11 @@ export default function App() {
               </div>
             </div>
           </div>
-        </div>
+          {/* ─── ROUTE STRIP ─── */}
+          <div className="route-strip" style={s.strip}>📍 Queen St CBD → Kings Rd, Panmure • 12.4km • ~18 min</div>
 
-        {/* Route Strip */}
-        <div style={s.strip}>📍 Queen St CBD → Kings Rd, Panmure • 12.4km • ~18 min</div>
-
-        {/* Row 2: Package + Service */}
-        <div style={s.grid}>
-          {/* Package + Services */}
-          <div style={s.card}>
+          {/* ─── PACKAGE CARD ─── */}
+          <div className="package-card" style={s.card}>
             <div style={s.sectionHeader}>PACKAGE</div>
             <Field label="Vehicle" value="Car/Van" type="select" />
             <div style={{ display: 'flex', marginBottom: 8, borderRadius: 20, overflow: 'hidden', border: '1px solid var(--border)' }}>
@@ -454,8 +451,8 @@ export default function App() {
             <Field label="Leave my Parcel" value="Currently Signature Required" type="select" />
           </div>
 
-          {/* Service Options + References */}
-          <div style={s.card}>
+          {/* ─── SERVICE PANEL (right column on wide) ─── */}
+          <div className="service-panel" style={s.card}>
             <div style={s.sectionHeader}>SERVICE</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 8 }}>
               {serviceOptions.map((svc, i) => (
@@ -487,14 +484,16 @@ export default function App() {
               )}
             </div>
 
-            <div style={s.divider} />
-            <Field label="Date + Time" value="Ready Now / Deliver ASAP" type="select" />
+          </div>
 
-            <div style={s.divider} />
+          {/* ─── REFERENCES CARD (below delivery on wide) ─── */}
+          <div className="refs-card" style={s.card}>
             <div style={s.sectionHeader}>REFERENCES</div>
             <Field label="Client Ref A - Cost Centre" value={refA} onChange={setRefA} />
             <Field label="Client Ref B" value={refB} onChange={setRefB} />
             <Field label="Client Notes" value={clientNotes} onChange={setClientNotes} rows={2} helper="Notes entered here are for your reference only" />
+            <div style={s.divider} />
+            <Field label="Date + Time" value="Ready Now / Deliver ASAP" type="select" />
           </div>
         </div>
 
