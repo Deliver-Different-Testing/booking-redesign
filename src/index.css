@@ -1,0 +1,62 @@
+:root {
+  --brand-dark: #0d0c2c;
+  --brand-cyan: #3bc7f4;
+  --brand-purple: #824ae0;
+  --surface-white: #ffffff;
+  --surface-light: #f4f2f1;
+  --surface-cream: #f8f7f7;
+  --border: #cfced5;
+  --border-light: #e6e5ea;
+  --text-primary: #0d0c2c;
+  --text-secondary: #6e6d80;
+  --text-muted: #9e9da8;
+  --success: #13b964;
+  --warning: #fe811a;
+  --error: #dc3246;
+  --shadow-sm: 0 1px 2px rgba(0, 14, 37, 0.05);
+  --shadow-md: 0 2px 8px rgba(0, 14, 37, 0.08);
+  --shadow-lg: 0 4px 12px rgba(0, 14, 37, 0.12);
+  --shadow-cyan-glow: 0 4px 12px rgba(59, 199, 244, 0.3);
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: 'Inter', sans-serif;
+  font-weight: 400;
+  color: var(--text-primary);
+  background: var(--surface-light);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+input, select, textarea, button {
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+}
+
+input, select, textarea {
+  height: 36px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  padding: 0 10px;
+  background: var(--surface-white);
+  color: var(--text-primary);
+  width: 100%;
+  outline: none;
+}
+
+input:focus, select:focus, textarea:focus {
+  border-color: var(--brand-cyan);
+}
+
+textarea {
+  height: auto;
+  padding: 8px 10px;
+  resize: none;
+}
+
+select {
+  cursor: pointer;
+  appearance: auto;
+}
