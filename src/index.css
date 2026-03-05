@@ -70,7 +70,7 @@ select {
 .route-strip-wide { display: none; }
 
 /* Default: 2-column stacked rows */
-@media (max-width: 1399px) {
+@media (max-width: 1199px) {
   .booking-page { max-width: 1200px; }
   .booking-grid { grid-template-columns: 1fr 1fr; }
   .booking-grid .pickup-card { grid-column: 1; grid-row: 1; }
@@ -81,7 +81,7 @@ select {
 }
 
 /* Wide: 3-column, service panel on right spanning full height */
-@media (min-width: 1400px) {
+@media (min-width: 1200px) {
   .booking-page { max-width: 1600px; }
   .booking-grid {
     grid-template-columns: 1fr 1fr 340px;
