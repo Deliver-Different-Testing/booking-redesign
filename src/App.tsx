@@ -120,14 +120,17 @@ export default function App() {
   const [weight, setWeight] = useState('8')
   const [dangerousGoods, setDangerousGoods] = useState(false)
   const [selectedService, setSelectedService] = useState(3)
-  const [selectedChips, setSelectedChips] = useState<Set<number>>(new Set())
+  const [pickupChips, setPickupChips] = useState<Set<number>>(new Set())
+  const [deliveryChips, setDeliveryChips] = useState<Set<number>>(new Set())
+  const [pickupServicesOpen, setPickupServicesOpen] = useState(false)
+  const [deliveryServicesOpen, setDeliveryServicesOpen] = useState(false)
   const [searchType, setSearchType] = useState<'google' | 'addressbook'>('google')
   const [reviewed, setReviewed] = useState(true)
   const [packageType, setPackageType] = useState<'standard' | 'custom'>('standard')
   const [refA, setRefA] = useState('')
   const [refB, setRefB] = useState('')
   const [clientNotes, setClientNotes] = useState('')
-  const [servicesExpanded, setServicesExpanded] = useState(false)
+  // removed global servicesExpanded
 
   // Voice state
   const [voiceText, setVoiceText] = useState('')
@@ -204,10 +207,12 @@ export default function App() {
     setListening(false)
   }, [])
 
-  const toggleChip = (i: number) => {
-    const n = new Set(selectedChips)
+  const toggleChip = (which: 'pickup' | 'delivery', i: number) => {
+    const setter = which === 'pickup' ? setPickupChips : setDeliveryChips
+    const current = which === 'pickup' ? pickupChips : deliveryChips
+    const n = new Set(current)
     n.has(i) ? n.delete(i) : n.add(i)
-    setSelectedChips(n)
+    setter(n)
   }
 
   const base = import.meta.env.BASE_URL
@@ -300,6 +305,52 @@ export default function App() {
               <Field label="Pickup Contact Phone" value={pickupContactPhone} onChange={setPickupContactPhone} />
             </div>
             <Field label="Pickup Notes" value={pickupNotes} onChange={setPickupNotes} rows={2} />
+
+            {/* Pickup Accessorials */}
+            <div style={{ position: 'relative', marginTop: 4 }}>
+              <button onClick={() => setPickupServicesOpen(!pickupServicesOpen)}
+                style={{
+                  position: 'absolute', bottom: pickupServicesOpen ? undefined : 0, right: 0,
+                  display: 'flex', alignItems: 'center', gap: 6,
+                  padding: '5px 12px', borderRadius: 20, cursor: 'pointer',
+                  border: pickupChips.size > 0 ? '1px solid var(--brand-cyan)' : '1px solid var(--border)',
+                  background: pickupChips.size > 0 ? 'rgba(59,199,244,0.08)' : 'var(--surface-cream)',
+                  color: pickupChips.size > 0 ? 'var(--brand-cyan)' : 'var(--text-muted)',
+                  fontWeight: 700, fontSize: 11, transition: 'all 0.15s',
+                  ...(pickupServicesOpen ? { position: 'relative', width: '100%', justifyContent: 'space-between' } : {}),
+                }}>
+                <span>
+                  + Services
+                  {pickupChips.size > 0 && (
+                    <span style={{ marginLeft: 6, background: 'var(--brand-cyan)', color: '#fff', borderRadius: 10, padding: '1px 7px', fontSize: 9, fontWeight: 700 }}>
+                      {pickupChips.size}
+                    </span>
+                  )}
+                </span>
+                {pickupServicesOpen && <span style={{ fontSize: 10, transform: 'rotate(180deg)' }}>▼</span>}
+              </button>
+              <div style={{
+                maxHeight: pickupServicesOpen ? 200 : 0, overflow: 'hidden',
+                transition: 'max-height 0.3s ease, padding 0.3s ease',
+                background: 'var(--surface-cream)', borderRadius: '0 0 10px 10px',
+                padding: pickupServicesOpen ? '8px 10px 8px' : '0 10px',
+              }}>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
+                  {additionalServices.map((svc, i) => (
+                    <button key={i} onClick={() => toggleChip('pickup', i)}
+                      style={{
+                        padding: '4px 10px', borderRadius: 16, fontSize: 10, fontWeight: 700,
+                        cursor: 'pointer', transition: 'all .15s',
+                        border: pickupChips.has(i) ? '1px solid var(--brand-cyan)' : '1px solid var(--border)',
+                        background: pickupChips.has(i) ? 'var(--brand-cyan)' : 'var(--surface-white)',
+                        color: pickupChips.has(i) ? '#fff' : 'var(--text-secondary)',
+                      }}>
+                      {pickupChips.has(i) ? '✓ ' : ''}{svc}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
           </div>
 
           <div style={s.card}>
@@ -322,6 +373,51 @@ export default function App() {
               <Field label="Delivery Contact Phone" value={deliveryContactPhone} onChange={setDeliveryContactPhone} />
             </div>
             <Field label="Delivery Notes" value={deliveryNotes} onChange={setDeliveryNotes} rows={2} />
+
+            {/* Delivery Accessorials */}
+            <div style={{ position: 'relative', marginTop: 4 }}>
+              <button onClick={() => setDeliveryServicesOpen(!deliveryServicesOpen)}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 6,
+                  padding: '5px 12px', borderRadius: 20, cursor: 'pointer',
+                  border: deliveryChips.size > 0 ? '1px solid var(--brand-cyan)' : '1px solid var(--border)',
+                  background: deliveryChips.size > 0 ? 'rgba(59,199,244,0.08)' : 'var(--surface-cream)',
+                  color: deliveryChips.size > 0 ? 'var(--brand-cyan)' : 'var(--text-muted)',
+                  fontWeight: 700, fontSize: 11, transition: 'all 0.15s',
+                  ...(deliveryServicesOpen ? { width: '100%', justifyContent: 'space-between' } : { marginLeft: 'auto' }),
+                }}>
+                <span>
+                  + Services
+                  {deliveryChips.size > 0 && (
+                    <span style={{ marginLeft: 6, background: 'var(--brand-cyan)', color: '#fff', borderRadius: 10, padding: '1px 7px', fontSize: 9, fontWeight: 700 }}>
+                      {deliveryChips.size}
+                    </span>
+                  )}
+                </span>
+                {deliveryServicesOpen && <span style={{ fontSize: 10, transform: 'rotate(180deg)' }}>▼</span>}
+              </button>
+              <div style={{
+                maxHeight: deliveryServicesOpen ? 200 : 0, overflow: 'hidden',
+                transition: 'max-height 0.3s ease, padding 0.3s ease',
+                background: 'var(--surface-cream)', borderRadius: '0 0 10px 10px',
+                padding: deliveryServicesOpen ? '8px 10px 8px' : '0 10px',
+              }}>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
+                  {additionalServices.map((svc, i) => (
+                    <button key={i} onClick={() => toggleChip('delivery', i)}
+                      style={{
+                        padding: '4px 10px', borderRadius: 16, fontSize: 10, fontWeight: 700,
+                        cursor: 'pointer', transition: 'all .15s',
+                        border: deliveryChips.has(i) ? '1px solid var(--brand-cyan)' : '1px solid var(--border)',
+                        background: deliveryChips.has(i) ? 'var(--brand-cyan)' : 'var(--surface-white)',
+                        color: deliveryChips.has(i) ? '#fff' : 'var(--text-secondary)',
+                      }}>
+                      {deliveryChips.has(i) ? '✓ ' : ''}{svc}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -351,74 +447,6 @@ export default function App() {
             </div>
             <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, marginBottom: 6, cursor: 'pointer' }}>
               <input type="checkbox" checked={dangerousGoods} onChange={() => setDangerousGoods(!dangerousGoods)} /> Dangerous Goods
-            </label>
-
-            <div style={s.divider} />
-
-            {/* Additional Services — single pill that expands */}
-            <div style={{ marginBottom: 8 }}>
-              <button onClick={() => setServicesExpanded(!servicesExpanded)}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: 8,
-                  padding: '8px 14px', borderRadius: 20, cursor: 'pointer',
-                  border: selectedChips.size > 0 ? '1px solid var(--brand-cyan)' : '1px solid var(--border)',
-                  background: selectedChips.size > 0 ? 'rgba(59,199,244,0.08)' : 'var(--surface-cream)',
-                  color: selectedChips.size > 0 ? 'var(--brand-cyan)' : 'var(--text-secondary)',
-                  fontWeight: 700, fontSize: 12, width: '100%', justifyContent: 'space-between',
-                  transition: 'all 0.15s',
-                }}>
-                <span>
-                  🔧 Additional Services
-                  {selectedChips.size > 0 && (
-                    <span style={{
-                      marginLeft: 8, background: 'var(--brand-cyan)', color: '#fff',
-                      borderRadius: 10, padding: '1px 8px', fontSize: 10, fontWeight: 700,
-                    }}>
-                      {selectedChips.size}
-                    </span>
-                  )}
-                </span>
-                <span style={{
-                  transition: 'transform 0.2s',
-                  transform: servicesExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
-                  fontSize: 10,
-                }}>▼</span>
-              </button>
-
-              {/* Expanded accessorials panel */}
-              <div style={{
-                maxHeight: servicesExpanded ? 300 : 0,
-                overflow: 'hidden',
-                transition: 'max-height 0.3s ease, opacity 0.2s ease, padding 0.3s ease',
-                opacity: servicesExpanded ? 1 : 0,
-                background: 'var(--surface-cream)',
-                borderRadius: '0 0 12px 12px',
-                padding: servicesExpanded ? '10px 12px' : '0 12px',
-              }}>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
-                  {additionalServices.map((svc, i) => (
-                    <button key={i} onClick={() => toggleChip(i)}
-                      style={{
-                        padding: '6px 14px', borderRadius: 20, fontSize: 11, fontWeight: 700,
-                        cursor: 'pointer', transition: 'all .15s',
-                        border: selectedChips.has(i) ? '1px solid var(--brand-cyan)' : '1px solid var(--border)',
-                        background: selectedChips.has(i) ? 'var(--brand-cyan)' : 'var(--surface-white)',
-                        color: selectedChips.has(i) ? '#fff' : 'var(--text-secondary)',
-                      }}>
-                      {selectedChips.has(i) ? '✓ ' : ''}{svc}
-                    </button>
-                  ))}
-                </div>
-                {selectedChips.size > 0 && (
-                  <div style={{ fontSize: 10, color: 'var(--text-muted)', borderTop: '1px solid var(--border-light)', paddingTop: 6 }}>
-                    Selected: {[...selectedChips].map(i => additionalServices[i]).join(', ')}
-                  </div>
-                )}
-              </div>
-            </div>
-
-            <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, cursor: 'pointer', marginBottom: 6 }}>
-              <input type="checkbox" checked={reviewed} onChange={() => setReviewed(!reviewed)} /> I have reviewed pickup additional services
             </label>
 
             <div style={s.divider} />
