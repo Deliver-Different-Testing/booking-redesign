@@ -7,14 +7,14 @@ const s = {
   searchRow: { background: 'var(--brand-dark)', padding: '0 20px 10px', display: 'flex', gap: 8 } as React.CSSProperties,
   page: { padding: '10px 20px 20px', maxWidth: 1200, margin: '0 auto' } as React.CSSProperties,
   grid: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 } as React.CSSProperties,
-  card: { background: 'var(--surface-white)', borderRadius: 12, padding: '14px 16px', boxShadow: 'var(--shadow-sm)' } as React.CSSProperties,
-  sectionHeader: { fontSize: 11, textTransform: 'uppercase' as const, color: 'var(--text-muted)', letterSpacing: '0.05em', marginBottom: 6, fontWeight: 700 },
-  field: { marginBottom: 6 } as React.CSSProperties,
-  label: { fontSize: 11, color: 'var(--text-secondary)', marginBottom: 2, display: 'block' } as React.CSSProperties,
-  cardHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 } as React.CSSProperties,
-  divider: { borderTop: '1px solid var(--border-light)', margin: '10px 0' } as React.CSSProperties,
-  strip: { background: 'var(--surface-cream)', textAlign: 'center' as const, padding: '6px 0', fontSize: 12, color: 'var(--text-secondary)', margin: '10px 0', borderRadius: 8 },
-  halfRow: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 } as React.CSSProperties,
+  card: { background: 'var(--surface-white)', borderRadius: 10, padding: '10px 12px', boxShadow: 'var(--shadow-sm)' } as React.CSSProperties,
+  sectionHeader: { fontSize: 10, textTransform: 'uppercase' as const, color: 'var(--text-muted)', letterSpacing: '0.05em', marginBottom: 4, fontWeight: 700 },
+  field: { marginBottom: 3 } as React.CSSProperties,
+  label: { fontSize: 10, color: 'var(--text-secondary)', marginBottom: 1, display: 'block' } as React.CSSProperties,
+  cardHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 } as React.CSSProperties,
+  divider: { borderTop: '1px solid var(--border-light)', margin: '6px 0' } as React.CSSProperties,
+  strip: { background: 'var(--surface-cream)', textAlign: 'center' as const, padding: '4px 0', fontSize: 11, color: 'var(--text-secondary)', borderRadius: 6 },
+  halfRow: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 } as React.CSSProperties,
 }
 
 /* ─── Controlled field ─────────────────────────────────── */
