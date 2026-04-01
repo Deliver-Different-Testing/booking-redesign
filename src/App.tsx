@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react'
+import { useState, useRef, useCallback, useMemo } from 'react'
 
 /* ─── Style tokens ─────────────────────────────────────── */
 const s = {
@@ -46,6 +46,42 @@ const additionalServices = [
   'Tail Lift Required', 'Hand Unload', 'Inside Pickup (Beyond Door)',
   'Pallet Jack Required', 'Stairs (per flight)', 'Wait Time (per 15 min)',
 ]
+
+/* ─── Package types (stock sizes + custom) ─────────── */
+interface StockSize {
+  id: number; name: string; length: number; width: number; height: number;
+  weight: number; isContainer: boolean;
+}
+
+const stockSizes: StockSize[] = [
+  { id: 1, name: 'Small Satchel', length: 30, width: 20, height: 10, weight: 1, isContainer: false },
+  { id: 2, name: 'Medium Box',    length: 40, width: 30, height: 30, weight: 5, isContainer: false },
+  { id: 3, name: 'Large Box',     length: 60, width: 40, height: 40, weight: 10, isContainer: false },
+  { id: 4, name: 'Banana Box',    length: 50, width: 35, height: 30, weight: 8, isContainer: false },
+  { id: 5, name: 'Pallet',        length: 120, width: 100, height: 150, weight: 50, isContainer: true },
+  { id: 6, name: 'Crate',         length: 180, width: 120, height: 120, weight: 30, isContainer: true },
+  { id: 7, name: 'Container',     length: 240, width: 120, height: 120, weight: 80, isContainer: true },
+]
+
+const innerTypes = ['Box', 'Carton', 'Satchel', 'Tube', 'Drum', 'Envelope', 'Other']
+
+interface ContentItem { type: string; qty: number }
+
+interface PackageRow {
+  packageType: string; isStandard: boolean; isContainer: boolean;
+  length: number | null; width: number | null; height: number | null;
+  cubic: number | null; weight: number | null; quantity: number;
+  contents: ContentItem[];
+}
+
+function makeEmptyRow(): PackageRow {
+  return { packageType: '', isStandard: false, isContainer: false, length: null, width: null, height: null, cubic: null, weight: null, quantity: 1, contents: [] }
+}
+
+function calcCubic(l: number | null, w: number | null, h: number | null): number | null {
+  if (l && w && h) return parseFloat((l * w * h / 1000000).toFixed(4)) // m³
+  return null
+}
 
 /* ─── Voice parser ─────────────────────────────────────── */
 function parseVoice(text: string, current: Record<string, string>): Record<string, string> {
@@ -115,9 +151,6 @@ export default function App() {
   const [deliveryContactName, setDeliveryContactName] = useState('')
   const [deliveryContactPhone, setDeliveryContactPhone] = useState('')
   const [deliveryNotes, setDeliveryNotes] = useState('')
-  const [packageSize, setPackageSize] = useState('Banana Box (53x39x24cm @ 8kg)')
-  const [quantity, setQuantity] = useState('1')
-  const [weight, setWeight] = useState('8')
   const [dangerousGoods, setDangerousGoods] = useState(false)
   const [selectedService, setSelectedService] = useState(3)
   const [pickupChips, setPickupChips] = useState<Set<number>>(new Set())
@@ -126,11 +159,74 @@ export default function App() {
   const [deliveryServicesOpen, setDeliveryServicesOpen] = useState(false)
   const [searchType, setSearchType] = useState<'google' | 'addressbook'>('google')
   const [reviewed, setReviewed] = useState(true)
-  const [packageType, setPackageType] = useState<'standard' | 'custom'>('standard')
   const [refA, setRefA] = useState('')
   const [refB, setRefB] = useState('')
   const [clientNotes, setClientNotes] = useState('')
-  // removed global servicesExpanded
+
+  // Unified package rows
+  const [packageRows, setPackageRows] = useState<PackageRow[]>([makeEmptyRow()])
+  const [dimsType, setDimsType] = useState<1 | 2>(1) // 1=per item, 2=total
+  const dimsUnit = 'cm'
+  const weightUnit = 'kg'
+
+  const packageOptions = useMemo(() => {
+    const opts = stockSizes.map(s => ({
+      value: `stock_${s.id}`,
+      label: s.name + (s.isContainer ? ' ◇' : ''),
+      stock: s,
+    }))
+    opts.push({ value: 'custom', label: 'Custom', stock: null as any })
+    return opts
+  }, [])
+
+  const updateRow = (index: number, updates: Partial<PackageRow>) => {
+    setPackageRows(prev => prev.map((r, i) => i === index ? { ...r, ...updates } : r))
+  }
+
+  const onPackageTypeChange = (index: number, value: string) => {
+    if (value === 'custom') {
+      updateRow(index, { packageType: value, isStandard: false, isContainer: false, length: null, width: null, height: null, cubic: null, weight: null, contents: [] })
+    } else if (value) {
+      const opt = packageOptions.find(o => o.value === value)
+      if (opt?.stock) {
+        const s = opt.stock
+        updateRow(index, {
+          packageType: value, isStandard: true, isContainer: s.isContainer,
+          length: s.length, width: s.width, height: s.height, weight: s.weight,
+          cubic: calcCubic(s.length, s.width, s.height),
+          contents: s.isContainer ? [{ type: '', qty: 1 }] : [],
+        })
+      }
+    } else {
+      updateRow(index, { packageType: '', isStandard: false, isContainer: false, contents: [] })
+    }
+  }
+
+  const addPackageRow = () => {
+    if (packageRows.length < 10) setPackageRows(prev => [...prev, makeEmptyRow()])
+  }
+
+  const removePackageRow = (index: number) => {
+    if (packageRows.length > 1) setPackageRows(prev => prev.filter((_, i) => i !== index))
+  }
+
+  const addContent = (rowIndex: number) => {
+    setPackageRows(prev => prev.map((r, i) => i === rowIndex ? { ...r, contents: [...r.contents, { type: '', qty: 1 }] } : r))
+  }
+
+  const removeContent = (rowIndex: number, contentIndex: number) => {
+    setPackageRows(prev => prev.map((r, i) => i === rowIndex ? { ...r, contents: r.contents.filter((_, ci) => ci !== contentIndex) } : r))
+  }
+
+  const updateContent = (rowIndex: number, contentIndex: number, updates: Partial<ContentItem>) => {
+    setPackageRows(prev => prev.map((r, i) => i === rowIndex ? {
+      ...r, contents: r.contents.map((c, ci) => ci === contentIndex ? { ...c, ...updates } : c)
+    } : r))
+  }
+
+  const totalCubic = packageRows.reduce((sum, r) => sum + (r.cubic || 0) * (r.quantity || 1), 0)
+  const totalWeight = packageRows.reduce((sum, r) => sum + (r.weight || 0) * (r.quantity || 1), 0)
+  const totalQty = packageRows.reduce((sum, r) => sum + (r.quantity || 0), 0)
 
   // Voice state
   const [voiceText, setVoiceText] = useState('')
@@ -140,7 +236,7 @@ export default function App() {
 
   const applyVoiceUpdates = useCallback((text: string) => {
     const current: Record<string, string> = {
-      pickupAddress, deliveryAddress, packageSize, quantity, weight,
+      pickupAddress, deliveryAddress, packageSize: '', quantity: '1', weight: '',
       pickupContactName, pickupContactPhone, refA,
       selectedService: String(selectedService),
     }
@@ -148,15 +244,23 @@ export default function App() {
 
     if (updates.pickupAddress !== pickupAddress) setPickupAddress(updates.pickupAddress)
     if (updates.deliveryAddress !== deliveryAddress) setDeliveryAddress(updates.deliveryAddress)
-    if (updates.packageSize && updates.packageSize !== packageSize) setPackageSize(updates.packageSize)
-    if (updates.quantity && updates.quantity !== quantity) setQuantity(updates.quantity)
-    if (updates.weight && updates.weight !== weight) setWeight(updates.weight)
+    // Voice: if a package size is detected, set the first row to that stock size
+    if (updates.packageSize) {
+      const match = stockSizes.find(s => updates.packageSize.toLowerCase().includes(s.name.toLowerCase()))
+      if (match) onPackageTypeChange(0, `stock_${match.id}`)
+    }
+    if (updates.quantity) {
+      setPackageRows(prev => prev.map((r, i) => i === 0 ? { ...r, quantity: parseInt(updates.quantity) || 1 } : r))
+    }
+    if (updates.weight) {
+      setPackageRows(prev => prev.map((r, i) => i === 0 ? { ...r, weight: parseFloat(updates.weight) || r.weight } : r))
+    }
     if (updates.selectedService) setSelectedService(parseInt(updates.selectedService))
     if (updates.pickupContactName && updates.pickupContactName !== pickupContactName) setPickupContactName(updates.pickupContactName)
     if (updates.pickupContactPhone && updates.pickupContactPhone !== pickupContactPhone) setPickupContactPhone(updates.pickupContactPhone)
     if (updates.dangerousGoods === 'true') setDangerousGoods(true)
     if (updates.refA && updates.refA !== refA) setRefA(updates.refA)
-  }, [pickupAddress, deliveryAddress, packageSize, quantity, weight, selectedService, pickupContactName, pickupContactPhone, refA])
+  }, [pickupAddress, deliveryAddress, selectedService, pickupContactName, pickupContactPhone, refA, onPackageTypeChange])
 
   const startVoice = useCallback(() => {
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
@@ -216,6 +320,12 @@ export default function App() {
   }
 
   const base = import.meta.env.BASE_URL
+
+  // Table cell styles
+  const thStyle: React.CSSProperties = { padding: '4px 2px', fontSize: 10, fontWeight: 700, textAlign: 'center', borderBottom: '1px solid var(--border)', color: 'var(--text-secondary)' }
+  const tdStyle: React.CSSProperties = { padding: 0, borderBottom: '1px solid var(--border-light)' }
+  const cellInput: React.CSSProperties = { width: '100%', border: 'none', outline: 'none', background: 'transparent', textAlign: 'center', fontSize: 12, padding: '4px 2px', height: 28, borderRadius: 0 }
+  const disabledInput: React.CSSProperties = { background: 'var(--surface-cream)', color: 'var(--text-muted)' }
 
   return (
     <div>
@@ -423,28 +533,160 @@ export default function App() {
           {/* ─── ROUTE STRIP ─── */}
           <div className="route-strip" style={s.strip}>📍 Queen St CBD → Kings Rd, Panmure • 12.4km • ~18 min</div>
 
-          {/* ─── PACKAGE CARD ─── */}
+          {/* ─── PACKAGE CARD (Unified Table) ─── */}
           <div className="package-card" style={s.card}>
             <div style={s.sectionHeader}>PACKAGE</div>
             <Field label="Vehicle" value="Car/Van" type="select" />
-            <div style={{ display: 'flex', marginBottom: 8, borderRadius: 20, overflow: 'hidden', border: '1px solid var(--border)' }}>
-              {['Standard', 'Custom'].map(t => (
-                <button key={t} onClick={() => setPackageType(t.toLowerCase() as any)}
-                  style={{ flex: 1, padding: '6px 0', border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: 12,
-                    background: packageType === t.toLowerCase() ? 'var(--brand-cyan)' : 'var(--surface-cream)',
-                    color: packageType === t.toLowerCase() ? '#fff' : 'var(--text-secondary)' }}>
-                  {t}
+
+            {/* Unified package table */}
+            <div style={{ marginTop: 6 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                <label style={{ fontSize: 10, color: 'var(--text-secondary)', fontWeight: 600, textTransform: 'uppercase' as const }}>
+                  Packages ({dimsUnit})
+                </label>
+              </div>
+
+              <table style={{ width: '100%', borderCollapse: 'collapse', border: '1px solid var(--border)', fontSize: 12 }}>
+                <thead>
+                  <tr style={{ background: 'var(--surface-cream)' }}>
+                    <th style={thStyle}>Package</th>
+                    <th style={{ ...thStyle, width: 52 }}>L</th>
+                    <th style={{ ...thStyle, width: 52 }}>W</th>
+                    <th style={{ ...thStyle, width: 52 }}>H</th>
+                    <th style={{ ...thStyle, width: 52 }}>m³</th>
+                    <th style={{ ...thStyle, width: 52 }}>{weightUnit}</th>
+                    <th style={{ ...thStyle, width: 42 }}>Qty</th>
+                    <th style={{ ...thStyle, width: 28, cursor: 'pointer', color: 'var(--brand-cyan)' }} onClick={addPackageRow} title="Add row">+</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {packageRows.map((row, ri) => (
+                    <>
+                      <tr key={`row-${ri}`}>
+                        <td style={tdStyle}>
+                          <select value={row.packageType} onChange={e => onPackageTypeChange(ri, e.target.value)}
+                            style={{ ...cellInput, height: 26, paddingRight: 14, appearance: 'auto' as const }}>
+                            <option value="">Select...</option>
+                            {packageOptions.map(opt => (
+                              <option key={opt.value} value={opt.value}>{opt.label}</option>
+                            ))}
+                          </select>
+                        </td>
+                        <td style={tdStyle}>
+                          <input type="number" min={1} value={row.length ?? ''} disabled={row.isStandard}
+                            onChange={e => { const v = parseFloat(e.target.value) || null; updateRow(ri, { length: v, cubic: calcCubic(v, row.width, row.height) }) }}
+                            style={{ ...cellInput, ...(row.isStandard ? disabledInput : {}) }} />
+                        </td>
+                        <td style={tdStyle}>
+                          <input type="number" min={1} value={row.width ?? ''} disabled={row.isStandard}
+                            onChange={e => { const v = parseFloat(e.target.value) || null; updateRow(ri, { width: v, cubic: calcCubic(row.length, v, row.height) }) }}
+                            style={{ ...cellInput, ...(row.isStandard ? disabledInput : {}) }} />
+                        </td>
+                        <td style={tdStyle}>
+                          <input type="number" min={1} value={row.height ?? ''} disabled={row.isStandard}
+                            onChange={e => { const v = parseFloat(e.target.value) || null; updateRow(ri, { height: v, cubic: calcCubic(row.length, row.width, v) }) }}
+                            style={{ ...cellInput, ...(row.isStandard ? disabledInput : {}) }} />
+                        </td>
+                        <td style={tdStyle}>
+                          <input type="number" min={0} value={row.cubic ?? ''} disabled={row.isStandard}
+                            onChange={e => updateRow(ri, { cubic: parseFloat(e.target.value) || null })}
+                            style={{ ...cellInput, ...(row.isStandard ? disabledInput : {}) }} />
+                        </td>
+                        <td style={tdStyle}>
+                          <input type="number" min={0} value={row.weight ?? ''} disabled={row.isStandard}
+                            onChange={e => updateRow(ri, { weight: parseFloat(e.target.value) || null })}
+                            style={{ ...cellInput, ...(row.isStandard ? disabledInput : {}) }} />
+                        </td>
+                        <td style={tdStyle}>
+                          <input type="number" min={1} value={row.quantity}
+                            onChange={e => updateRow(ri, { quantity: parseInt(e.target.value) || 1 })}
+                            style={cellInput} />
+                        </td>
+                        <td style={{ ...tdStyle, textAlign: 'center' as const }}>
+                          {packageRows.length > 1 && (
+                            <span onClick={() => removePackageRow(ri)} title="Remove"
+                              style={{ cursor: 'pointer', color: 'var(--error)', fontSize: 14, fontWeight: 700 }}>−</span>
+                          )}
+                        </td>
+                      </tr>
+
+                      {/* Container contents sub-row */}
+                      {row.isContainer && row.packageType && (
+                        <tr key={`contents-${ri}`}>
+                          <td colSpan={8} style={{ padding: '6px 8px', background: 'var(--surface-cream)', borderBottom: '1px solid var(--border)' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', fontSize: 11 }}>
+                              <span style={{ fontWeight: 600, color: 'var(--text-secondary)', fontSize: 10 }}>Contains:</span>
+                              {row.contents.map((item, ci) => (
+                                <span key={ci} style={{
+                                  display: 'inline-flex', alignItems: 'center', gap: 3,
+                                  background: 'rgba(59,199,244,0.08)', border: '1px solid rgba(59,199,244,0.3)',
+                                  borderRadius: 12, padding: '2px 8px', fontSize: 11,
+                                }}>
+                                  <select value={item.type} onChange={e => updateContent(ri, ci, { type: e.target.value })}
+                                    style={{ border: 'none', background: 'transparent', fontSize: 11, outline: 'none', padding: 0, height: 'auto' }}>
+                                    <option value="">type...</option>
+                                    {innerTypes.map(t => <option key={t} value={t}>{t}</option>)}
+                                  </select>
+                                  <span>×</span>
+                                  <input type="number" min={1} value={item.qty}
+                                    onChange={e => updateContent(ri, ci, { qty: parseInt(e.target.value) || 1 })}
+                                    style={{ border: 'none', background: 'transparent', width: 28, textAlign: 'center' as const, padding: 0, fontSize: 11, height: 'auto' }} />
+                                  <span onClick={() => removeContent(ri, ci)}
+                                    style={{ cursor: 'pointer', color: 'var(--error)', fontSize: 10, fontWeight: 700 }}>✕</span>
+                                </span>
+                              ))}
+                              <span onClick={() => addContent(ri)}
+                                style={{ cursor: 'pointer', color: 'var(--brand-cyan)', fontWeight: 600, fontSize: 11 }}>
+                                + Add
+                              </span>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </>
+                  ))}
+
+                  {/* Totals row */}
+                  <tr style={{ background: 'var(--surface-cream)' }}>
+                    <td style={{ ...tdStyle, fontWeight: 700, textAlign: 'right' as const, paddingRight: 8 }} colSpan={4}>Total</td>
+                    <td style={{ ...tdStyle, fontWeight: 700 }}>{totalCubic ? totalCubic.toFixed(4) : '0'}</td>
+                    <td style={{ ...tdStyle, fontWeight: 700 }}>{totalWeight || 0}</td>
+                    <td style={{ ...tdStyle, fontWeight: 700 }}>{totalQty}</td>
+                    <td style={tdStyle}></td>
+                  </tr>
+                </tbody>
+              </table>
+
+              {/* Dimensions toggle */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8 }}>
+                <label style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 600 }}>Dimensions are:</label>
+                <button onClick={() => setDimsType(dimsType === 1 ? 2 : 1)}
+                  style={{
+                    position: 'relative', width: 44, height: 22, borderRadius: 22, border: 'none', cursor: 'pointer',
+                    background: dimsType === 2 ? 'var(--brand-cyan)' : '#ccc', transition: 'background 0.3s',
+                  }}>
+                  <span style={{
+                    position: 'absolute', top: 2, left: dimsType === 2 ? 24 : 2,
+                    width: 18, height: 18, borderRadius: '50%', background: '#fff',
+                    transition: 'left 0.3s', boxShadow: '0 1px 3px rgba(0,0,0,.2)',
+                  }} />
                 </button>
-              ))}
+                <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--brand-cyan)' }}>
+                  {dimsType === 1 ? 'Per Item' : 'Total'}
+                </span>
+              </div>
+              <div style={{ fontSize: 10, color: 'var(--text-muted)', fontStyle: 'italic', marginTop: 2 }}>
+                {dimsType === 1
+                  ? 'Dimensions represent each individual item'
+                  : 'Dimensions represent the total shipment'}
+              </div>
             </div>
-            <Field label="Package Size" value={packageSize} onChange={setPackageSize} type="select" />
-            <div style={s.halfRow}>
-              <Field label="Quantity" value={quantity} onChange={setQuantity} />
-              <Field label="Total Weight (kg)" value={weight} onChange={setWeight} />
+
+            <div style={{ marginTop: 8 }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, marginBottom: 6, cursor: 'pointer' }}>
+                <input type="checkbox" checked={dangerousGoods} onChange={() => setDangerousGoods(!dangerousGoods)} /> Dangerous Goods
+              </label>
             </div>
-            <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, marginBottom: 6, cursor: 'pointer' }}>
-              <input type="checkbox" checked={dangerousGoods} onChange={() => setDangerousGoods(!dangerousGoods)} /> Dangerous Goods
-            </label>
 
             <div style={s.divider} />
             <Field label="Tracking Method" value="Web Site" type="select" />
